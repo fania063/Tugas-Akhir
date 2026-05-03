@@ -28,7 +28,7 @@ export default function LoginPage() {
         throw error
       }
 
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } catch (error: any) {
       setError(error.message || 'Gagal login. Silakan periksa kredensial Anda.')

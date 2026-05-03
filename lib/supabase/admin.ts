@@ -9,7 +9,7 @@ export function createAdminClient() {
   }
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Please add it to your environment variables.')
+    throw new Error(' is not set. Please add it to your environment variables.')
   }
 
   return createClient(
