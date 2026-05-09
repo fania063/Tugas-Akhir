@@ -11,6 +11,7 @@ export const patientSchema = z.object({
   nama_ayah: z.string().optional(),
   nama_ibu: z.string().optional(),
   nama_suami: z.string().optional(),
+  id_ibu: z.string().optional(),
 })
 
 export type PatientFormValues = z.infer<typeof patientSchema>

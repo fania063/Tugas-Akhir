@@ -64,12 +64,6 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (request.nextUrl.pathname.startsWith('/admin/puskesmas') && profile?.role !== 'super_admin') {
-      // Only super_admin can access /admin/puskesmas
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
-    }
   }
 
   return supabaseResponse

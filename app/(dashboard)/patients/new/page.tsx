@@ -13,14 +13,18 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { patientSchema, type PatientFormValues } from '@/lib/validations/patient.schema'
 import { Loader2 } from 'lucide-react'
+import { useEffect } from 'react'
+import { PatientCombobox } from '@/components/ui/patient-combobox'
+import { Patient } from '@/types'
 
 export default function NewPatientPage() {
   const router = useRouter()
-  const { profile, puskesmas } = useAuth()
+  const { profile } = useAuth()
   const supabase = createClient()
   const [checkingNik, setCheckingNik] = useState(false)
   const [existingPatient, setExistingPatient] = useState<any>(null)
-  
+  const [ibuPatients, setIbuPatients] = useState<Patient[]>([])
+
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema),
     defaultValues: {
@@ -34,15 +38,28 @@ export default function NewPatientPage() {
       nama_ayah: '',
       nama_ibu: '',
       nama_suami: '',
+      id_ibu: '',
     },
   })
+
+  // Fetch data ibu untuk combobox id_ibu
+  useEffect(() => {
+    async function fetchIbu() {
+      const { data } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('jenis_kelamin', 'P')
+      if (data) setIbuPatients(data as Patient[])
+    }
+    fetchIbu()
+  }, [])
 
   // Watch NIK changes to check if patient already exists globally
   const nikValue = form.watch('nik')
 
   const checkNik = async () => {
     if (nikValue.length !== 16) return
-    
+
     setCheckingNik(true)
     try {
       const { data, error } = await supabase
@@ -50,7 +67,7 @@ export default function NewPatientPage() {
         .select('*')
         .eq('nik', nikValue)
         .single()
-        
+
       if (data) {
         setExistingPatient(data)
         // Auto fill form with existing data
@@ -65,6 +82,7 @@ export default function NewPatientPage() {
           nama_ayah: data.nama_ayah || '',
           nama_ibu: data.nama_ibu || '',
           nama_suami: data.nama_suami || '',
+          id_ibu: data.id_ibu || '',
         })
       } else {
         setExistingPatient(null)
@@ -78,43 +96,28 @@ export default function NewPatientPage() {
   }
 
   const onSubmit = async (values: PatientFormValues) => {
-    if (!profile?.puskesmas_id) {
-      alert('Error: Anda tidak terdaftar di puskesmas manapun.')
-      return
-    }
-
     try {
       let patientId = existingPatient?.id
 
-      // 1. If patient doesn't exist globally, create them
+      // 1. Jika pasien belum ada, buat baru
       if (!existingPatient) {
         const { data: newPatient, error: createError } = await supabase
           .from('patients')
           .insert(values)
           .select('id')
           .single()
-          
+
         if (createError) throw createError
         patientId = newPatient.id
       } else {
-        // Optional: Update existing patient data if changed
+        // Update data pasien yang sudah ada
         const { error: updateError } = await supabase
           .from('patients')
           .update(values)
           .eq('id', patientId)
-          
+
         if (updateError) throw updateError
       }
-
-      // 2. Register patient to this puskesmas (if not already)
-      const { error: registerError } = await supabase
-        .from('puskesmas_patients')
-        .upsert({
-          puskesmas_id: profile.puskesmas_id,
-          patient_id: patientId,
-        }, { onConflict: 'puskesmas_id,patient_id' })
-        
-      if (registerError) throw registerError
 
       router.push(`/patients/${patientId}`)
       router.refresh()
@@ -125,9 +128,9 @@ export default function NewPatientPage() {
 
   return (
     <>
-      <PageHeader 
-        title="Tambah Pasien Baru" 
-        description={`Mendaftarkan pasien ke ${puskesmas?.nama || 'Puskesmas'}`}
+      <PageHeader
+        title="Tambah Pasien Baru"
+        description="Mendaftarkan pasien baru ke Posyandu Melati"
       />
 
       <Card className="max-w-3xl">
@@ -136,18 +139,18 @@ export default function NewPatientPage() {
             {/* NIK Section with Check */}
             <div className="space-y-4 pb-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Identitas Utama</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">NIK (16 Digit) *</label>
                 <div className="flex gap-2">
-                  <Input 
-                    {...form.register('nik')} 
-                    placeholder="Masukkan 16 digit NIK" 
+                  <Input
+                    {...form.register('nik')}
+                    placeholder="Masukkan 16 digit NIK"
                     maxLength={16}
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={checkNik}
                     disabled={nikValue.length !== 16 || checkingNik}
                   >
@@ -164,7 +167,7 @@ export default function NewPatientPage() {
                   <div className="flex">
                     <div className="ml-3">
                       <p className="text-sm text-amber-700">
-                        Pasien dengan NIK ini sudah ada di database global. Data di bawah telah diisi otomatis. 
+                        Pasien dengan NIK ini sudah ada di database global. Data di bawah telah diisi otomatis.
                         Menyimpan form ini akan mendaftarkan pasien tersebut ke puskesmas Anda.
                       </p>
                     </div>
@@ -220,7 +223,7 @@ export default function NewPatientPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-900">Data Keluarga (Opsional)</h3>
               <p className="text-sm text-gray-500">Diperlukan untuk pemeriksaan Balita / Ibu Hamil</p>
-              
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nama Ayah</label>
@@ -234,6 +237,21 @@ export default function NewPatientPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nama Suami</label>
                   <Input {...form.register('nama_suami')} placeholder="Untuk bumil/busui" />
                 </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cari data pasien ibu
+                </label>
+                <p className="text-xs text-slate-500 mb-2">
+                  Pilih ibu pasien jika pasien adalah anak. Opsional.
+                </p>
+                <PatientCombobox
+                  patients={ibuPatients}
+                  value={form.watch('id_ibu') || ''}
+                  onChange={(val) => form.setValue('id_ibu', val)}
+                  placeholder="Cari Ibu berdasarkan Nama/NIK..."
+                />
               </div>
             </div>
 

@@ -30,10 +30,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 2. Use admin client to perform the operations
     const supabaseAdmin = createAdminClient()
 
-    // 2a. Insert Puskesmas
     const { data: puskesmas, error: puskesmasError } = await supabaseAdmin
       .from('puskesmas')
       .insert({ kode, nama, alamat })
@@ -62,9 +60,9 @@ export async function POST(request: Request) {
     // 2c. Update profile for the new admin user
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({ 
+      .update({
         role: 'admin',
-        puskesmas_id: puskesmas.id 
+        puskesmas_id: puskesmas.id
       })
       .eq('id', adminUser.user.id)
 
@@ -76,10 +74,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to assign admin role' }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       puskesmas,
-      adminUser: { id: adminUser.user.id, email: adminUser.user.email } 
+      adminUser: { id: adminUser.user.id, email: adminUser.user.email }
     })
 
   } catch (error: any) {

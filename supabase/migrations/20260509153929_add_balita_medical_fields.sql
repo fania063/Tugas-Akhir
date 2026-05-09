@@ -1,0 +1,4 @@
+ALTER TABLE examination_balita_details 
+  ADD COLUMN IF NOT EXISTS keluhan TEXT,
+  ADD COLUMN IF NOT EXISTS diagnosa TEXT,
+  ADD COLUMN IF NOT EXISTS terapi TEXT;

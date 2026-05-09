@@ -14,78 +14,13 @@ import { Select } from '@/components/ui/select'
 import { examinationSchema, type ExaminationFormValues } from '@/lib/validations/examination.schema'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { PatientCombobox } from '@/components/ui/patient-combobox'
 
-// Detail Components
-function BalitaDetails({ register }: { register: any }) {
-  const immunizations = ['bcg', 'dpt1', 'dpt2', 'dpt3', 'polio1', 'polio2', 'polio3', 'hb1', 'hb2', 'hb3', 'campak']
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Detail Pemeriksaan Balita</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label className="block text-sm mb-1">Ket NTOB</label><Input {...register('detail.ket_ntob')} /></div>
-        <div><label className="block text-sm mb-1">Vitamin A</label><Input {...register('detail.vit_a')} /></div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <label className="flex items-center space-x-2"><input type="checkbox" {...register('detail.is_bgm')} /> <span>BGM</span></label>
-        <label className="flex items-center space-x-2"><input type="checkbox" {...register('detail.is_bgt')} /> <span>BGT</span></label>
-        <label className="flex items-center space-x-2"><input type="checkbox" {...register('detail.hb_less_7')} /> <span>HB {'<'} 7</span></label>
-        <label className="flex items-center space-x-2"><input type="checkbox" {...register('detail.hb_more_7')} /> <span>HB {'>='} 7</span></label>
-      </div>
-      <div>
-        <label className="block text-sm mb-2 font-medium">Imunisasi Diberikan Kunjungan Ini:</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {immunizations.map(imun => (
-            <label key={imun} className="flex items-center space-x-2">
-              <input type="checkbox" {...register(`detail.imun_${imun}`)} /> 
-              <span className="uppercase">{imun}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function BumilDetails({ register }: { register: any }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Detail Pemeriksaan Ibu Hamil</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label className="block text-sm mb-1">HPHT</label><Input type="date" {...register('detail.hpht')} /></div>
-        <div><label className="block text-sm mb-1">Tafsiran Persalinan (TP)</label><Input type="date" {...register('detail.tp')} /></div>
-        <div><label className="block text-sm mb-1">GPA</label><Input {...register('detail.gpa')} placeholder="G... P... A..." /></div>
-        <div><label className="block text-sm mb-1">LILA (cm)</label><Input type="number" step="0.1" {...register('detail.lila_cm')} /></div>
-        <div className="sm:col-span-2"><label className="block text-sm mb-1">Tanda Bahaya</label><Input {...register('detail.tanda_bahaya')} /></div>
-        <div className="sm:col-span-2"><label className="block text-sm mb-1">Obat yang Dikonsumsi</label><Input {...register('detail.obat_dikonsumsi')} /></div>
-      </div>
-    </div>
-  )
-}
-
-function BusuiDetails({ register }: { register: any }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Detail Pemeriksaan Ibu Menyusui</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label className="block text-sm mb-1">Nama Bayi</label><Input {...register('detail.nama_bayi')} /></div>
-        <div><label className="block text-sm mb-1">Jenis Persalinan</label><Input {...register('detail.jenis_persalinan')} /></div>
-        <div className="sm:col-span-2"><label className="block text-sm mb-1">Kondisi ASI</label><Input {...register('detail.kondisi_asi')} /></div>
-      </div>
-    </div>
-  )
-}
-
-function LansiaDetails({ register }: { register: any }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Detail Pemeriksaan Lansia</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label className="block text-sm mb-1">Gula Darah (mg/dL)</label><Input type="number" step="0.1" {...register('detail.gula_darah')} /></div>
-        <div><label className="block text-sm mb-1">Kolesterol (mg/dL)</label><Input type="number" step="0.1" {...register('detail.kolesterol')} /></div>
-      </div>
-    </div>
-  )
-}
+// Form Detail Components
+import { LansiaDetailForm } from '@/components/examinations/form-detail-lansia'
+import { BumilDetailForm } from '@/components/examinations/form-detail-bumil'
+import { BusuiDetailForm } from '@/components/examinations/form-detail-busui'
+import { BalitaDetailForm } from '@/components/examinations/form-detail-balita'
 
 function ExaminationFormContent() {
   const router = useRouter()
@@ -97,7 +32,7 @@ function ExaminationFormContent() {
   const [patients, setPatients] = useState<any[]>([])
   const [loadingPatients, setLoadingPatients] = useState(true)
 
-  const form = useForm<any>({ // using any to allow dynamic detail fields
+  const form = useForm<any>({
     resolver: zodResolver(examinationSchema),
     defaultValues: {
       patient_id: defaultPatientId || '',
@@ -106,25 +41,72 @@ function ExaminationFormContent() {
       berat_badan: '',
       tinggi_badan: '',
       tekanan_darah: '',
-      riwayat_penyakit: '',
-      keluhan: '',
-      diagnosa: '',
-      terapi: '',
-      keterangan: '',
-      detail: {}
+      detail: {},
+      imunisasi_diberikan: []
     },
   })
 
   const selectedJenis = form.watch('jenis_pemeriksaan')
+  const selectedPatientId = form.watch('patient_id')
+  
+  // Ambil tanggal lahir pasien untuk perhitungan usia balita
+  const selectedPatient = patients.find(p => p.id === selectedPatientId)
+  const [recommendationMsg, setRecommendationMsg] = useState('')
+
+  useEffect(() => {
+    if (selectedPatient && selectedPatient.tanggal_lahir) {
+      const today = new Date()
+      const birth = new Date(selectedPatient.tanggal_lahir)
+      let ageYears = today.getFullYear() - birth.getFullYear()
+      const m = today.getMonth() - birth.getMonth()
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        ageYears--
+      }
+      
+      let ageMonths = (today.getFullYear() - birth.getFullYear()) * 12 + today.getMonth() - birth.getMonth()
+      if (today.getDate() < birth.getDate()) {
+        ageMonths--
+      }
+
+      const jk = selectedPatient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'
+      
+      let recommendedType: any = null
+      
+      if (ageYears < 5) {
+        recommendedType = 'Balita'
+        setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun (${ageMonths} Bulan). Rekomendasi: Balita`)
+      } else if (ageYears >= 60) {
+        recommendedType = 'Lansia'
+        setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Rekomendasi: Lansia`)
+      } else {
+        if (selectedPatient.jenis_kelamin === 'P') {
+          setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Silakan pilih Ibu Hamil atau Ibu Menyusui (jika relevan).`)
+        } else {
+          setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Tidak ada jenis pemeriksaan khusus.`)
+        }
+      }
+
+      // Auto select only if the current value is not already a valid choice or we are switching to a new recommended type
+      // Actually it's better to always set it if there is a recommendation to save clicks
+      if (recommendedType) {
+        form.setValue('jenis_pemeriksaan', recommendedType, { shouldValidate: true })
+      } else {
+        // Jangan auto-reset jika perempuan dewasa karena mereka mungkin sudah memilih bumil/busui
+        if (selectedPatient.jenis_kelamin !== 'P') {
+          form.setValue('jenis_pemeriksaan', undefined)
+        }
+      }
+    } else {
+      setRecommendationMsg('')
+    }
+  }, [selectedPatient, form])
 
   useEffect(() => {
     async function loadPatients() {
-      if (!profile?.puskesmas_id) return
       try {
         const { data } = await supabase
           .from('patients')
-          .select('id, nama, nik, puskesmas_patients!inner(puskesmas_id)')
-          .eq('puskesmas_patients.puskesmas_id', profile.puskesmas_id)
+          .select('id, nama, nik, tanggal_lahir, jenis_kelamin')
           .order('nama')
           
         setPatients(data || [])
@@ -138,7 +120,10 @@ function ExaminationFormContent() {
   }, [profile, supabase])
 
   const onSubmit = async (values: any) => {
-    if (!profile?.puskesmas_id || !user?.id) return
+    if (!user?.id) return
+
+    console.log('[SUBMIT] Form values:', values)
+    console.log('[SUBMIT] imunisasi_diberikan:', values.imunisasi_diberikan)
 
     try {
       // 1. Insert main examination
@@ -147,26 +132,25 @@ function ExaminationFormContent() {
         .insert({
           patient_id: values.patient_id,
           user_id: user.id,
-          puskesmas_id: profile.puskesmas_id,
           tanggal_pemeriksaan: values.tanggal_pemeriksaan,
           jenis_pemeriksaan: values.jenis_pemeriksaan,
           berat_badan: values.berat_badan ? parseFloat(values.berat_badan) : null,
           tinggi_badan: values.tinggi_badan ? parseFloat(values.tinggi_badan) : null,
           tekanan_darah: values.tekanan_darah || null,
-          riwayat_penyakit: values.riwayat_penyakit || null,
-          keluhan: values.keluhan || null,
-          diagnosa: values.diagnosa || null,
-          terapi: values.terapi || null,
-          keterangan: values.keterangan || null,
         })
         .select('id')
         .single()
 
       if (examError) throw examError
       const examId = examData.id
+      console.log('[SUBMIT] examId created:', examId)
 
       // 2. Insert detail based on jenis
-      const detailValues = { ...values.detail, examination_id: examId }
+      const rawDetail = values.detail || {}
+      const detailValues: Record<string, any> = { examination_id: examId }
+      for (const key in rawDetail) {
+        detailValues[key] = rawDetail[key] === '' ? null : rawDetail[key]
+      }
       
       let detailTable = ''
       switch(values.jenis_pemeriksaan) {
@@ -177,21 +161,43 @@ function ExaminationFormContent() {
       }
 
       if (detailTable) {
-        // clean up empty string numbers
-        for (const key in detailValues) {
-          if (detailValues[key] === '') detailValues[key] = null
-        }
-        
+        console.log('[SUBMIT] Inserting detail to:', detailTable, detailValues)
         const { error: detailError } = await supabase
           .from(detailTable)
           .insert(detailValues)
           
-        if (detailError) throw detailError
+        if (detailError) throw new Error(`Detail error [${detailTable}]: ${detailError.message}`)
+      }
+
+      // 3. Insert vaccination records for Balita
+      const imunisasiList: string[] = Array.isArray(values.imunisasi_diberikan)
+        ? values.imunisasi_diberikan
+        : values.imunisasi_diberikan
+        ? [values.imunisasi_diberikan]
+        : []
+
+      console.log('[SUBMIT] imunisasiList to insert:', imunisasiList)
+
+      if (values.jenis_pemeriksaan === 'Balita' && imunisasiList.length > 0) {
+        const vaccinationRecords = imunisasiList.map((vaksin: string) => ({
+          patient_id: values.patient_id,
+          examination_id: examId,
+          jenis_vaksin: vaksin,
+          tanggal: values.tanggal_pemeriksaan,
+        }))
+
+        console.log('[SUBMIT] Inserting vaccinations:', vaccinationRecords)
+        const { error: vaxError } = await supabase
+          .from('vaccination_records')
+          .insert(vaccinationRecords)
+        
+        if (vaxError) throw new Error(`Vaksinasi error: ${vaxError.message}`)
       }
 
       router.push('/examinations')
       router.refresh()
     } catch (error: any) {
+      console.error('[SUBMIT ERROR]', error)
       alert(`Gagal menyimpan: ${error.message}`)
     }
   }
@@ -210,63 +216,102 @@ function ExaminationFormContent() {
         <CardContent className="p-6">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
               <div>
-                <label className="block text-sm font-medium mb-1">Pasien *</label>
-                <Select {...form.register('patient_id')} disabled={loadingPatients || !!defaultPatientId}>
-                  <option value="">{loadingPatients ? 'Loading...' : 'Pilih Pasien'}</option>
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.nama} ({p.nik})</option>
-                  ))}
-                </Select>
-                {form.formState.errors.patient_id && <p className="text-sm text-red-500 mt-1">{String(form.formState.errors.patient_id.message)}</p>}
+                <label className="block text-sm font-medium mb-1">Pasien <span className="text-red-500">*</span></label>
+                {loadingPatients ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500 border rounded-lg px-3 py-2 bg-slate-50">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading Pasien...
+                  </div>
+                ) : (
+                  <div>
+                    <PatientCombobox 
+                      patients={patients}
+                      value={form.watch('patient_id')}
+                      onChange={(val) => form.setValue('patient_id', val, { shouldValidate: true })}
+                      placeholder="Cari NIK / Nama Pasien..."
+                      disabled={!!defaultPatientId}
+                      error={form.formState.errors.patient_id?.message as string | undefined}
+                    />
+                    {recommendationMsg && (
+                      <div className="mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100 flex items-start gap-1.5">
+                        <span className="text-emerald-500">ℹ️</span>
+                        <span>{recommendationMsg}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Tanggal Pemeriksaan *</label>
+                <label className="block text-sm font-medium mb-1">Tanggal Pemeriksaan <span className="text-red-500">*</span></label>
                 <Input type="date" {...form.register('tanggal_pemeriksaan')} />
                 {form.formState.errors.tanggal_pemeriksaan && <p className="text-sm text-red-500 mt-1">{String(form.formState.errors.tanggal_pemeriksaan.message)}</p>}
               </div>
             </div>
 
-            <div className="pb-6 border-b border-gray-200">
-              <label className="block text-sm font-medium mb-2">Jenis Pemeriksaan *</label>
+            <div className="pb-6 border-b border-slate-200">
+              <label className="block text-sm font-medium mb-3">Jenis Pemeriksaan <span className="text-red-500">*</span></label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {['Balita', 'Ibu_Hamil', 'Ibu_Menyusui', 'Lansia'].map((jenis) => (
-                  <label key={jenis} className={`
-                    border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-colors
-                    ${selectedJenis === jenis ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}
+                {[
+                  { value: 'Balita', label: 'Balita', emoji: '👶' },
+                  { value: 'Ibu_Hamil', label: 'Ibu Hamil', emoji: '🤰' },
+                  { value: 'Ibu_Menyusui', label: 'Ibu Menyusui', emoji: '🤱' },
+                  { value: 'Lansia', label: 'Lansia', emoji: '👵' }
+                ].map((jenis) => (
+                  <label key={jenis.value} className={`
+                    border-2 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all
+                    ${selectedJenis === jenis.value 
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' 
+                      : 'border-slate-200 hover:border-emerald-200 hover:bg-slate-50 text-slate-700'}
                   `}>
-                    <input type="radio" value={jenis} {...form.register('jenis_pemeriksaan')} className="sr-only" />
-                    <span className="font-medium text-sm text-center">{jenis.replace('_', ' ')}</span>
+                    <input type="radio" value={jenis.value} {...form.register('jenis_pemeriksaan')} className="sr-only" />
+                    <span className="text-2xl mb-2">{jenis.emoji}</span>
+                    <span className="font-bold text-sm text-center">{jenis.label}</span>
                   </label>
                 ))}
               </div>
-              {form.formState.errors.jenis_pemeriksaan && <p className="text-sm text-red-500 mt-1">{String(form.formState.errors.jenis_pemeriksaan.message)}</p>}
+              {form.formState.errors.jenis_pemeriksaan && <p className="text-sm text-red-500 mt-2">{String(form.formState.errors.jenis_pemeriksaan.message)}</p>}
             </div>
 
             {selectedJenis && (
-              <div className="space-y-6 pb-6 border-b border-gray-200">
-                <h3 className="text-lg font-medium">Tanda Vital & Umum</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div><label className="block text-sm mb-1">Berat Badan (kg)</label><Input type="number" step="0.1" {...form.register('berat_badan')} /></div>
-                  <div><label className="block text-sm mb-1">Tinggi Badan (cm)</label><Input type="number" step="0.1" {...form.register('tinggi_badan')} /></div>
-                  <div><label className="block text-sm mb-1">Tekanan Darah</label><Input placeholder="120/80" {...form.register('tekanan_darah')} /></div>
+              <div className="space-y-6 pb-6 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📏</span>
+                  <h3 className="text-base font-bold text-slate-800">Tanda Vital & Umum</h3>
                 </div>
-                <div className="grid grid-cols-1 gap-4">
-                  <div><label className="block text-sm mb-1">Keluhan</label><Input {...form.register('keluhan')} /></div>
-                  <div><label className="block text-sm mb-1">Riwayat Penyakit</label><Input {...form.register('riwayat_penyakit')} /></div>
-                  <div><label className="block text-sm mb-1">Diagnosa</label><Input {...form.register('diagnosa')} /></div>
-                  <div><label className="block text-sm mb-1">Terapi / Tindakan</label><Input {...form.register('terapi')} /></div>
-                  <div><label className="block text-sm mb-1">Keterangan</label><Input {...form.register('keterangan')} /></div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Berat Badan</label>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" step="0.1" placeholder="0" className="flex-1" {...form.register('berat_badan')} />
+                      <span className="text-xs text-slate-500 font-medium">kg</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-slate-700">Tinggi Badan</label>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" step="0.1" placeholder="0" className="flex-1" {...form.register('tinggi_badan')} />
+                      <span className="text-xs text-slate-500 font-medium">cm</span>
+                    </div>
+                  </div>
+                  {selectedJenis !== 'Balita' && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-slate-700">Tekanan Darah</label>
+                      <Input placeholder="Contoh: 120/80" {...form.register('tekanan_darah')} />
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                </div>
             )}
 
-            {selectedJenis === 'Balita' && <BalitaDetails register={form.register} />}
-            {selectedJenis === 'Ibu_Hamil' && <BumilDetails register={form.register} />}
-            {selectedJenis === 'Ibu_Menyusui' && <BusuiDetails register={form.register} />}
-            {selectedJenis === 'Lansia' && <LansiaDetails register={form.register} />}
+            {/* Spesifik Detail Component */}
+            {selectedJenis === 'Balita' && <BalitaDetailForm register={form.register} control={form.control} tanggalLahirPasien={selectedPatient?.tanggal_lahir} />}
+            {selectedJenis === 'Ibu_Hamil' && <BumilDetailForm register={form.register} control={form.control} />}
+            {selectedJenis === 'Ibu_Menyusui' && <BusuiDetailForm register={form.register} control={form.control} />}
+            {selectedJenis === 'Lansia' && <LansiaDetailForm register={form.register} control={form.control} />}
 
             <div className="pt-5 flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => router.back()}>Batal</Button>
@@ -283,7 +328,7 @@ function ExaminationFormContent() {
 
 export default function NewExaminationPage() {
   return (
-    <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>}>
+    <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-emerald-600" /></div>}>
       <ExaminationFormContent />
     </Suspense>
   )

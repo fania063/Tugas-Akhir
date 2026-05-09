@@ -7,11 +7,10 @@ export const examinationSchema = z.object({
   berat_badan: z.string().optional(),
   tinggi_badan: z.string().optional(),
   tekanan_darah: z.string().optional(),
-  riwayat_penyakit: z.string().optional(),
-  keluhan: z.string().optional(),
-  diagnosa: z.string().optional(),
-  terapi: z.string().optional(),
-  keterangan: z.string().optional(),
+  // Field detail spesifik per jenis (diteruskan ke tabel detail masing-masing)
+  detail: z.record(z.string(), z.any()).optional(),
+  // Imunisasi balita — checkbox array, diinsert ke vaccination_records
+  imunisasi_diberikan: z.union([z.array(z.string()), z.string()]).optional(),
 })
 
 export type ExaminationFormValues = z.infer<typeof examinationSchema>

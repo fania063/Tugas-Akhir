@@ -16,7 +16,7 @@ import { exportToPDF } from '@/lib/export/export-pdf'
 export default function ReportsPage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const { profile, puskesmas, isSuperAdmin } = useAuth()
+  const { profile } = useAuth()
   const supabase = createClient()
 
   // Filters
@@ -26,11 +26,6 @@ export default function ReportsPage() {
   const [puskesmasFilter, setPuskesmasFilter] = useState('')
   const [puskesmasList, setPuskesmasList] = useState<any[]>([])
 
-  useEffect(() => {
-    if (isSuperAdmin) {
-      supabase.from('puskesmas').select('id, nama').then(({ data }) => setPuskesmasList(data || []))
-    }
-  }, [isSuperAdmin, supabase])
 
   const fetchReportData = async () => {
     setLoading(true)
@@ -41,21 +36,14 @@ export default function ReportsPage() {
           *,
           patients:patient_id(nik, nama, jenis_kelamin),
           profiles:user_id(nama),
-          puskesmas:puskesmas_id(nama),
           examination_balita_details(*),
           examination_bumil_details(*),
           examination_busui_details(*),
-          examination_lansia_details(*)
+          examination_lansia_details(*),
+          vaccination_records(*)
         `)
         .gte('tanggal_pemeriksaan', `${startDate}T00:00:00Z`)
         .lte('tanggal_pemeriksaan', `${endDate}T23:59:59Z`)
-
-      // Puskesmas filter
-      if (!isSuperAdmin && profile?.puskesmas_id) {
-        query = query.eq('puskesmas_id', profile.puskesmas_id)
-      } else if (isSuperAdmin && puskesmasFilter) {
-        query = query.eq('puskesmas_id', puskesmasFilter)
-      }
 
       // Jenis filter
       if (jenis) {
@@ -83,8 +71,40 @@ export default function ReportsPage() {
   const handleExportPDF = () => {
     if (data.length === 0) return
     const filename = `Laporan_Pemeriksaan_${startDate}_to_${endDate}`
-    const title = `Laporan Pemeriksaan ${puskesmas?.nama || 'Puskesmas'}\nPeriode: ${formatDate(startDate)} - ${formatDate(endDate)}`
+    const title = `Laporan Pemeriksaan Posyandu Melati\nPeriode: ${formatDate(startDate)} - ${formatDate(endDate)}`
     exportToPDF(data, filename, title)
+  }
+
+  const getExamSummary = (exam: any) => {
+    const details = []
+    if (exam.berat_badan) details.push(`BB: ${exam.berat_badan}kg`)
+    if (exam.tinggi_badan) details.push(`TB: ${exam.tinggi_badan}cm`)
+    if (exam.tekanan_darah) details.push(`TD: ${exam.tekanan_darah}`)
+    
+    switch (exam.jenis_pemeriksaan) {
+      case 'Balita':
+        const balita = exam.examination_balita_details?.[0]
+        if (balita?.status_gizi) details.push(`Gizi: ${balita.status_gizi}`)
+        const vaxs = exam.vaccination_records?.map((v: any) => v.jenis_vaksin.replace('_', ' ')).join(', ')
+        if (vaxs) details.push(`Imunisasi: ${vaxs}`)
+        break
+      case 'Ibu_Hamil':
+        const bumil = exam.examination_bumil_details?.[0]
+        if (bumil?.diagnosa) details.push(`Dx: ${bumil.diagnosa}`)
+        if (bumil?.keluhan) details.push(`Keluhan: ${bumil.keluhan}`)
+        break
+      case 'Ibu_Menyusui':
+        const busui = exam.examination_busui_details?.[0]
+        if (busui?.kondisi_asi) details.push(`ASI: ${busui.kondisi_asi.replace('_', ' ')}`)
+        if (busui?.diagnosa) details.push(`Dx: ${busui.diagnosa}`)
+        break
+      case 'Lansia':
+        const lansia = exam.examination_lansia_details?.[0]
+        if (lansia?.diagnosa) details.push(`Dx: ${lansia.diagnosa}`)
+        if (lansia?.gula_darah) details.push(`Gula: ${lansia.gula_darah}`)
+        break
+    }
+    return details.join(' | ') || '-'
   }
 
   return (
@@ -114,17 +134,6 @@ export default function ReportsPage() {
               <option value="Lansia">Lansia</option>
             </Select>
           </div>
-          {isSuperAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Puskesmas</label>
-              <Select value={puskesmasFilter} onChange={(e) => setPuskesmasFilter(e.target.value)}>
-                <option value="">Semua Puskesmas</option>
-                {puskesmasList.map(p => (
-                  <option key={p.id} value={p.id}>{p.nama}</option>
-                ))}
-              </Select>
-            </div>
-          )}
         </div>
         
         <div className="pt-2 flex flex-wrap gap-3">
@@ -149,15 +158,15 @@ export default function ReportsPage() {
       {data.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-700">Preview Data ({data.length} baris)</h3>
-          <div className="overflow-x-auto max-h-96">
+          <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-96">
             <Table>
-              <TableHeader className="sticky top-0 bg-gray-50 shadow-sm z-10">
+              <TableHeader className="sticky top-0 bg-slate-50 shadow-sm z-10">
                 <TableRow>
-                  <TableHead>Tanggal</TableHead>
+                  <TableHead className="w-[120px]">Tanggal</TableHead>
                   <TableHead>Pasien</TableHead>
                   <TableHead>Jenis</TableHead>
-                  <TableHead>Diagnosa</TableHead>
-                  {isSuperAdmin && <TableHead>Puskesmas</TableHead>}
+                  <TableHead>Ringkasan Informasi</TableHead>
+                  <TableHead>Petugas</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -167,19 +176,20 @@ export default function ReportsPage() {
                       {formatDate(exam.tanggal_pemeriksaan)}
                     </TableCell>
                     <TableCell>
-                      {exam.patients?.nama}
+                      <div className="font-semibold text-slate-900">{exam.patients?.nama}</div>
+                      <div className="text-xs text-slate-500">{exam.patients?.nik}</div>
                     </TableCell>
                     <TableCell>
-                      {exam.jenis_pemeriksaan.replace('_', ' ')}
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
+                        {exam.jenis_pemeriksaan.replace('_', ' ')}
+                      </span>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {exam.diagnosa || '-'}
+                    <TableCell className="text-xs text-slate-600 max-w-md">
+                      {getExamSummary(exam)}
                     </TableCell>
-                    {isSuperAdmin && (
-                      <TableCell className="text-sm text-gray-500">
-                        {exam.puskesmas?.nama}
-                      </TableCell>
-                    )}
+                    <TableCell className="text-xs text-slate-500 whitespace-nowrap">
+                      {exam.profiles?.nama}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

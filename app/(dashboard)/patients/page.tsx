@@ -16,19 +16,14 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const { profile, puskesmas, isSuperAdmin } = useAuth()
+  const { profile } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {
     async function fetchPatients() {
       setLoading(true)
       try {
-        let query = supabase.from('patients').select('*, puskesmas_patients!inner(puskesmas_id)')
-        
-        // If not super admin, filter by puskesmas_id
-        if (!isSuperAdmin && profile?.puskesmas_id) {
-          query = query.eq('puskesmas_patients.puskesmas_id', profile.puskesmas_id)
-        }
+        let query = supabase.from('patients').select('*')
 
         if (search) {
           query = query.or(`nama.ilike.%${search}%,nik.ilike.%${search}%`)
@@ -48,13 +43,13 @@ export default function PatientsPage() {
     if (profile) {
       fetchPatients()
     }
-  }, [profile, isSuperAdmin, search, supabase])
+  }, [profile, search, supabase])
 
   return (
     <>
       <PageHeader 
         title="Daftar Pasien" 
-        description={isSuperAdmin ? "Semua pasien dari seluruh puskesmas" : `Pasien terdaftar di ${puskesmas?.nama || 'Puskesmas'}`}
+        description="Data pasien terdaftar di Posyandu Melati"
       >
         <Link href="/patients/new">
           <Button>

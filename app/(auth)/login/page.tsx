@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Lock, Loader2 } from 'lucide-react'
+import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -38,20 +38,22 @@ export default function LoginPage() {
   }
 
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+    <form className="space-y-6" onSubmit={handleLogin}>
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-          {error}
+        <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          <span className="shrink-0 text-red-500">⚠</span>
+          <p>{error}</p>
         </div>
       )}
-      <div className="space-y-4 rounded-md shadow-sm">
+      
+      <div className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+          <label className="block text-sm font-bold text-slate-700 mb-1.5" htmlFor="email">
             Alamat Email
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-gray-400" />
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+              <Mail className="h-5 w-5" />
             </div>
             <input
               id="email"
@@ -59,20 +61,21 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Masukkan email"
+              className="appearance-none rounded-xl relative block w-full pl-11 px-4 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all bg-slate-50/50 focus:bg-white sm:text-sm font-medium"
+              placeholder="admin@posyandumelati.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
         </div>
+        
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
+          <label className="block text-sm font-bold text-slate-700 mb-1.5" htmlFor="password">
             Password
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-gray-400" />
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+              <Lock className="h-5 w-5" />
             </div>
             <input
               id="password"
@@ -80,8 +83,8 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Masukkan password"
+              className="appearance-none rounded-xl relative block w-full pl-11 px-4 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all bg-slate-50/50 focus:bg-white sm:text-sm font-medium"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -89,16 +92,20 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div>
+      <div className="pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="group relative w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-500/30 overflow-hidden"
         >
           {loading ? (
             <Loader2 className="animate-spin h-5 w-5" />
           ) : (
-            'Masuk'
+            <>
+              <span className="relative z-10">Masuk ke Sistem</span>
+              <ArrowRight className="ml-2 h-4 w-4 relative z-10 group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-emerald-600 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </>
           )}
         </button>
       </div>
