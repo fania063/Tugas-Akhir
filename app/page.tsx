@@ -61,7 +61,7 @@ export default async function Home() {
             </h1>
             
             <p className="text-lg md:text-xl text-slate-600 mb-12 max-w-2xl leading-relaxed">
-              Platform digital khusus untuk Posyandu Melati — pencatatan pasien, rekam medis, imunisasi balita, dan laporan kesehatan ibu & anak dalam satu sistem terintegrasi.
+              Platform digital khusus untuk Posyandu Melati — pencatatan pasien, imunisasi balita, dan laporan kesehatan ibu & anak serta Lansia dalam satu sistem terintegrasi.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-4">

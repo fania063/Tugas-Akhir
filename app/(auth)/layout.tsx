@@ -22,7 +22,7 @@ export default function AuthLayout({
             Posyandu Melati
           </h1>
           <p className="text-lg text-emerald-100/90 max-w-md leading-relaxed font-medium">
-            Sistem Informasi Manajemen Posyandu terintegrasi. Membantu kader dan petugas kesehatan mencatat serta memantau tumbuh kembang balita, kesehatan ibu hamil, ibu menyusui, dan lansia dengan lebih mudah dan akurat.
+            Sistem Informasi Manajemen Posyandu terintegrasi. Membantu kader dan petugas kesehatan mencatat serta memantau tumbuh kembang balita, kesehatan ibu hamil, ibu menyusui, dan lansia dengan lebih mudah.
           </p>
           
           {/* Testimonial / Info tambahan */}

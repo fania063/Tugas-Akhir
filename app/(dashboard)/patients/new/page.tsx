@@ -96,14 +96,19 @@ export default function NewPatientPage() {
   }
 
   const onSubmit = async (values: PatientFormValues) => {
-    try {
-      let patientId = existingPatient?.id
+  const cleanValues = {
+    ...values,
+    id_ibu: values.id_ibu || null,
+  }
+
+  try {
+    let patientId = existingPatient?.id
 
       // 1. Jika pasien belum ada, buat baru
       if (!existingPatient) {
         const { data: newPatient, error: createError } = await supabase
           .from('patients')
-          .insert(values)
+          .insert(cleanValues)
           .select('id')
           .single()
 
@@ -113,7 +118,7 @@ export default function NewPatientPage() {
         // Update data pasien yang sudah ada
         const { error: updateError } = await supabase
           .from('patients')
-          .update(values)
+          .update(cleanValues)
           .eq('id', patientId)
 
         if (updateError) throw updateError
