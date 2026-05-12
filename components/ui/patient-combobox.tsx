@@ -105,6 +105,35 @@ export function PatientCombobox({
                       ) : (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 font-bold">P</span>
                       )}
+                      {p.tanggal_lahir && (() => {
+                        const today = new Date()
+                        const birthDate = new Date(p.tanggal_lahir)
+                        
+                        let ageYears = today.getFullYear() - birthDate.getFullYear()
+                        let ageMonths = today.getMonth() - birthDate.getMonth()
+                        let ageDays = today.getDate() - birthDate.getDate()
+
+                        if (ageDays < 0) {
+                          ageMonths--
+                          const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+                          ageDays += previousMonth.getDate()
+                        }
+                        if (ageMonths < 0) {
+                          ageYears--
+                          ageMonths += 12
+                        }
+
+                        let ageString = ''
+                        if (ageYears > 0) {
+                          ageString = `${ageYears} Thn ${ageMonths} Bln ${ageDays} Hr`
+                        } else if (ageMonths > 0) {
+                          ageString = `${ageMonths} Bln ${ageDays} Hr`
+                        } else {
+                          ageString = `${ageDays} Hr`
+                        }
+
+                        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">{ageString}</span>
+                      })()}
                     </div>
                     <div className="text-xs text-slate-400">{p.nik}</div>
                   </div>

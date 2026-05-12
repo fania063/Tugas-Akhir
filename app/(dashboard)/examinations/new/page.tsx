@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,10 +10,8 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
-import { examinationSchema, type ExaminationFormValues } from '@/lib/validations/examination.schema'
+import { examinationSchema } from '@/lib/validations/examination.schema'
 import { Loader2, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
 import { PatientCombobox } from '@/components/ui/patient-combobox'
 
 // Form Detail Components
@@ -26,7 +24,7 @@ function ExaminationFormContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const defaultPatientId = searchParams.get('patientId')
-  
+
   const { profile, user } = useAuth()
   const supabase = createClient()
   const [patients, setPatients] = useState<any[]>([])
@@ -48,58 +46,36 @@ function ExaminationFormContent() {
 
   const selectedJenis = form.watch('jenis_pemeriksaan')
   const selectedPatientId = form.watch('patient_id')
-  
-  // Ambil tanggal lahir pasien untuk perhitungan usia balita
   const selectedPatient = patients.find(p => p.id === selectedPatientId)
-  const [recommendationMsg, setRecommendationMsg] = useState('')
 
-  useEffect(() => {
-    if (selectedPatient && selectedPatient.tanggal_lahir) {
+  const filteredPatients = useMemo(() => {
+    if (!selectedJenis) return []
+    return patients.filter(p => {
+      if (!p.tanggal_lahir) return false
       const today = new Date()
-      const birth = new Date(selectedPatient.tanggal_lahir)
+      const birth = new Date(p.tanggal_lahir)
       let ageYears = today.getFullYear() - birth.getFullYear()
       const m = today.getMonth() - birth.getMonth()
       if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
         ageYears--
       }
-      
-      let ageMonths = (today.getFullYear() - birth.getFullYear()) * 12 + today.getMonth() - birth.getMonth()
-      if (today.getDate() < birth.getDate()) {
-        ageMonths--
-      }
 
-      const jk = selectedPatient.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'
-      
-      let recommendedType: any = null
-      
-      if (ageYears < 5) {
-        recommendedType = 'Balita'
-        setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun (${ageMonths} Bulan). Rekomendasi: Balita`)
-      } else if (ageYears >= 60) {
-        recommendedType = 'Lansia'
-        setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Rekomendasi: Lansia`)
-      } else {
-        if (selectedPatient.jenis_kelamin === 'P') {
-          setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Silakan pilih Ibu Hamil atau Ibu Menyusui (jika relevan).`)
-        } else {
-          setRecommendationMsg(`${jk}, Usia ${ageYears} Tahun. Tidak ada jenis pemeriksaan khusus.`)
-        }
-      }
+      if (selectedJenis === 'Balita') return ageYears < 5
+      if (selectedJenis === 'Lansia') return ageYears >= 60
+      if (selectedJenis === 'Ibu_Hamil' || selectedJenis === 'Ibu_Menyusui') return p.jenis_kelamin === 'P'
+      return true
+    })
+  }, [patients, selectedJenis])
 
-      // Auto select only if the current value is not already a valid choice or we are switching to a new recommended type
-      // Actually it's better to always set it if there is a recommendation to save clicks
-      if (recommendedType) {
-        form.setValue('jenis_pemeriksaan', recommendedType, { shouldValidate: true })
-      } else {
-        // Jangan auto-reset jika perempuan dewasa karena mereka mungkin sudah memilih bumil/busui
-        if (selectedPatient.jenis_kelamin !== 'P') {
-          form.setValue('jenis_pemeriksaan', undefined)
-        }
+  // Reset selected patient if it doesn't match the new filter
+  useEffect(() => {
+    if (selectedPatientId && filteredPatients.length > 0) {
+      const isStillValid = filteredPatients.some(p => p.id === selectedPatientId)
+      if (!isStillValid) {
+        form.setValue('patient_id', '', { shouldValidate: true })
       }
-    } else {
-      setRecommendationMsg('')
     }
-  }, [selectedPatient, form])
+  }, [selectedJenis, filteredPatients, selectedPatientId, form])
 
   useEffect(() => {
     async function loadPatients() {
@@ -108,7 +84,7 @@ function ExaminationFormContent() {
           .from('patients')
           .select('id, nama, nik, tanggal_lahir, jenis_kelamin')
           .order('nama')
-          
+
         setPatients(data || [])
       } catch (error) {
         console.error(error)
@@ -151,9 +127,9 @@ function ExaminationFormContent() {
       for (const key in rawDetail) {
         detailValues[key] = rawDetail[key] === '' ? null : rawDetail[key]
       }
-      
+
       let detailTable = ''
-      switch(values.jenis_pemeriksaan) {
+      switch (values.jenis_pemeriksaan) {
         case 'Balita': detailTable = 'examination_balita_details'; break;
         case 'Ibu_Hamil': detailTable = 'examination_bumil_details'; break;
         case 'Ibu_Menyusui': detailTable = 'examination_busui_details'; break;
@@ -165,7 +141,7 @@ function ExaminationFormContent() {
         const { error: detailError } = await supabase
           .from(detailTable)
           .insert(detailValues)
-          
+
         if (detailError) throw new Error(`Detail error [${detailTable}]: ${detailError.message}`)
       }
 
@@ -173,8 +149,8 @@ function ExaminationFormContent() {
       const imunisasiList: string[] = Array.isArray(values.imunisasi_diberikan)
         ? values.imunisasi_diberikan
         : values.imunisasi_diberikan
-        ? [values.imunisasi_diberikan]
-        : []
+          ? [values.imunisasi_diberikan]
+          : []
 
       console.log('[SUBMIT] imunisasiList to insert:', imunisasiList)
 
@@ -190,7 +166,7 @@ function ExaminationFormContent() {
         const { error: vaxError } = await supabase
           .from('vaccination_records')
           .insert(vaccinationRecords)
-        
+
         if (vaxError) throw new Error(`Vaksinasi error: ${vaxError.message}`)
       }
 
@@ -215,40 +191,6 @@ function ExaminationFormContent() {
       <Card className="max-w-4xl">
         <CardContent className="p-6">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
-              <div>
-                <label className="block text-sm font-medium mb-1">Pasien <span className="text-red-500">*</span></label>
-                {loadingPatients ? (
-                  <div className="flex items-center gap-2 text-sm text-slate-500 border rounded-lg px-3 py-2 bg-slate-50">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading Pasien...
-                  </div>
-                ) : (
-                  <div>
-                    <PatientCombobox 
-                      patients={patients}
-                      value={form.watch('patient_id')}
-                      onChange={(val) => form.setValue('patient_id', val, { shouldValidate: true })}
-                      placeholder="Cari NIK / Nama Pasien..."
-                      disabled={!!defaultPatientId}
-                      error={form.formState.errors.patient_id?.message as string | undefined}
-                    />
-                    {recommendationMsg && (
-                      <div className="mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-100 flex items-start gap-1.5">
-                        <span className="text-emerald-500">ℹ️</span>
-                        <span>{recommendationMsg}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Tanggal Pemeriksaan <span className="text-red-500">*</span></label>
-                <Input type="date" {...form.register('tanggal_pemeriksaan')} />
-                {form.formState.errors.tanggal_pemeriksaan && <p className="text-sm text-red-500 mt-1">{String(form.formState.errors.tanggal_pemeriksaan.message)}</p>}
-              </div>
-            </div>
 
             <div className="pb-6 border-b border-slate-200">
               <label className="block text-sm font-medium mb-3">Jenis Pemeriksaan <span className="text-red-500">*</span></label>
@@ -261,8 +203,8 @@ function ExaminationFormContent() {
                 ].map((jenis) => (
                   <label key={jenis.value} className={`
                     border-2 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all
-                    ${selectedJenis === jenis.value 
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' 
+                    ${selectedJenis === jenis.value
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
                       : 'border-slate-200 hover:border-emerald-200 hover:bg-slate-50 text-slate-700'}
                   `}>
                     <input type="radio" value={jenis.value} {...form.register('jenis_pemeriksaan')} className="sr-only" />
@@ -274,13 +216,41 @@ function ExaminationFormContent() {
               {form.formState.errors.jenis_pemeriksaan && <p className="text-sm text-red-500 mt-2">{String(form.formState.errors.jenis_pemeriksaan.message)}</p>}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
+              <div>
+                <label className="block text-sm font-medium mb-1">Pasien <span className="text-red-500">*</span></label>
+                {loadingPatients ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500 border rounded-lg px-3 py-2 bg-slate-50">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading Pasien...
+                  </div>
+                ) : (
+                  <div>
+                    <PatientCombobox
+                      patients={filteredPatients}
+                      value={form.watch('patient_id')}
+                      onChange={(val) => form.setValue('patient_id', val, { shouldValidate: true })}
+                      placeholder={selectedJenis ? "Cari NIK / Nama Pasien..." : "Pilih jenis pemeriksaan terlebih dahulu"}
+                      disabled={!!defaultPatientId || !selectedJenis}
+                      error={form.formState.errors.patient_id?.message as string | undefined}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Tanggal Pemeriksaan <span className="text-red-500">*</span></label>
+                <Input type="date" {...form.register('tanggal_pemeriksaan')} />
+                {form.formState.errors.tanggal_pemeriksaan && <p className="text-sm text-red-500 mt-1">{String(form.formState.errors.tanggal_pemeriksaan.message)}</p>}
+              </div>
+            </div>
+
             {selectedJenis && (
               <div className="space-y-6 pb-6 border-b border-slate-200">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">📏</span>
                   <h3 className="text-base font-bold text-slate-800">Tanda Vital & Umum</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700">Berat Badan</label>
@@ -304,7 +274,7 @@ function ExaminationFormContent() {
                   )}
                 </div>
 
-                </div>
+              </div>
             )}
 
             {/* Spesifik Detail Component */}

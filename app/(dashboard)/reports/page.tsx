@@ -20,16 +20,43 @@ export default function ReportsPage() {
   const supabase = createClient()
 
   // Filters
+  const [filterMode, setFilterMode] = useState<'month' | 'range'>('month')
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
   const [jenis, setJenis] = useState('')
   const [puskesmasFilter, setPuskesmasFilter] = useState('')
   const [puskesmasList, setPuskesmasList] = useState<any[]>([])
+  const [previewTitle, setPreviewTitle] = useState('')
+  const [exportDateRange, setExportDateRange] = useState({ start: '', end: '' })
 
 
   const fetchReportData = async () => {
     setLoading(true)
     try {
+      let activeStart = startDate
+      let activeEnd = endDate
+      let title = ''
+
+      if (filterMode === 'month') {
+        const year = parseInt(selectedMonth.split('-')[0])
+        const month = parseInt(selectedMonth.split('-')[1])
+        activeStart = `${year}-${String(month).padStart(2, '0')}-01`
+        const lastDay = new Date(year, month, 0).getDate()
+        activeEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+        
+        const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+        title = `Bulan ${monthNames[month - 1]} ${year}`
+      } else {
+        title = `Periode ${formatDate(startDate)} - ${formatDate(endDate)}`
+      }
+      
+      setPreviewTitle(title)
+      setExportDateRange({ start: activeStart, end: activeEnd })
+
       let query = supabase
         .from('examinations')
         .select(`
@@ -42,8 +69,8 @@ export default function ReportsPage() {
           examination_lansia_details(*),
           vaccination_records(*)
         `)
-        .gte('tanggal_pemeriksaan', `${startDate}T00:00:00Z`)
-        .lte('tanggal_pemeriksaan', `${endDate}T23:59:59Z`)
+        .gte('tanggal_pemeriksaan', `${activeStart}T00:00:00Z`)
+        .lte('tanggal_pemeriksaan', `${activeEnd}T23:59:59Z`)
 
       // Jenis filter
       if (jenis) {
@@ -64,14 +91,14 @@ export default function ReportsPage() {
 
   const handleExportExcel = () => {
     if (data.length === 0) return
-    const filename = `Laporan_Pemeriksaan_${startDate}_to_${endDate}`
+    const filename = `Laporan_Pemeriksaan_${exportDateRange.start}_to_${exportDateRange.end}`
     exportToExcel(data, filename)
   }
 
   const handleExportPDF = () => {
     if (data.length === 0) return
-    const filename = `Laporan_Pemeriksaan_${startDate}_to_${endDate}`
-    const title = `Laporan Pemeriksaan Posyandu Melati\nPeriode: ${formatDate(startDate)} - ${formatDate(endDate)}`
+    const filename = `Laporan_Pemeriksaan_${exportDateRange.start}_to_${exportDateRange.end}`
+    const title = `Laporan Pemeriksaan Posyandu Melati\n${previewTitle}`
     exportToPDF(data, filename, title)
   }
 
@@ -114,25 +141,51 @@ export default function ReportsPage() {
         description="Filter data pemeriksaan untuk di-export ke Excel atau PDF"
       />
 
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1 border-r pr-6 border-slate-100">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">Mode Waktu</label>
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button 
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${filterMode === 'month' ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-900'}`}
+                onClick={() => setFilterMode('month')}
+              >Per Bulan</button>
+              <button 
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${filterMode === 'range' ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-900'}`}
+                onClick={() => setFilterMode('range')}
+              >Rentang</button>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sampai Tanggal</label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Pemeriksaan</label>
-            <Select value={jenis} onChange={(e) => setJenis(e.target.value)}>
-              <option value="">Semua Jenis</option>
-              <option value="Balita">Balita</option>
-              <option value="Ibu_Hamil">Ibu Hamil</option>
-              <option value="Ibu_Menyusui">Ibu Menyusui</option>
-              <option value="Lansia">Lansia</option>
-            </Select>
+          
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filterMode === 'month' ? (
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Pilih Bulan</label>
+                <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full sm:w-1/2" />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Dari Tanggal</label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Sampai Tanggal</label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
+              </>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Jenis Pemeriksaan</label>
+              <Select value={jenis} onChange={(e) => setJenis(e.target.value)}>
+                <option value="">Semua Jenis</option>
+                <option value="Balita">Balita</option>
+                <option value="Ibu_Hamil">Ibu Hamil</option>
+                <option value="Ibu_Menyusui">Ibu Menyusui</option>
+                <option value="Lansia">Lansia</option>
+              </Select>
+            </div>
           </div>
         </div>
         
@@ -155,9 +208,16 @@ export default function ReportsPage() {
       </div>
 
       {/* Preview Table */}
-      {data.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-700">Preview Data ({data.length} baris)</h3>
+      {data.length > 0 && previewTitle && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h3 className="text-lg font-bold text-slate-800">
+              Hasil Laporan <span className="text-emerald-600">— {previewTitle}</span>
+            </h3>
+            <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-1 rounded-full">
+              Total: {data.length} Data
+            </span>
+          </div>
           <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-96">
             <Table>
               <TableHeader className="sticky top-0 bg-slate-50 shadow-sm z-10">
