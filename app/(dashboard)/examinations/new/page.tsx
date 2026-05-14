@@ -60,9 +60,13 @@ function ExaminationFormContent() {
         ageYears--
       }
 
+      // Balita: usia < 5 tahun, L atau P
       if (selectedJenis === 'Balita') return ageYears < 5
-      if (selectedJenis === 'Lansia') return ageYears >= 60
-      if (selectedJenis === 'Ibu_Hamil' || selectedJenis === 'Ibu_Menyusui') return p.jenis_kelamin === 'P'
+      // Ibu Hamil / Ibu Menyusui: perempuan, usia > 12 dan < 60 tahun
+      if (selectedJenis === 'Ibu_Hamil' || selectedJenis === 'Ibu_Menyusui')
+        return p.jenis_kelamin === 'P' && ageYears > 12 && ageYears < 60
+      // Lansia: usia > 60 tahun, L atau P
+      if (selectedJenis === 'Lansia') return ageYears > 60
       return true
     })
   }, [patients, selectedJenis])
@@ -76,6 +80,14 @@ function ExaminationFormContent() {
       }
     }
   }, [selectedJenis, filteredPatients, selectedPatientId, form])
+
+  // Reset field 'detail' dan 'imunisasi_diberikan' setiap kali jenis pemeriksaan berubah
+  // agar field dari jenis sebelumnya (mis. asam_urat dari Lansia) tidak ikut terkirim
+  useEffect(() => {
+    form.setValue('detail', {})
+    form.setValue('imunisasi_diberikan', [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedJenis])
 
   useEffect(() => {
     async function loadPatients() {
@@ -279,7 +291,7 @@ function ExaminationFormContent() {
 
             {/* Spesifik Detail Component */}
             {selectedJenis === 'Balita' && <BalitaDetailForm register={form.register} control={form.control} tanggalLahirPasien={selectedPatient?.tanggal_lahir} />}
-            {selectedJenis === 'Ibu_Hamil' && <BumilDetailForm register={form.register} control={form.control} />}
+            {selectedJenis === 'Ibu_Hamil' && <BumilDetailForm register={form.register} control={form.control} tanggalPemeriksaan={form.watch('tanggal_pemeriksaan')} />}
             {selectedJenis === 'Ibu_Menyusui' && <BusuiDetailForm register={form.register} control={form.control} />}
             {selectedJenis === 'Lansia' && <LansiaDetailForm register={form.register} control={form.control} />}
 

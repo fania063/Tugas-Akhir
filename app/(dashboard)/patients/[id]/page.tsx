@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Patient, hitungUsiaBalita, hitungUsiaKehamilan } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Plus, Loader2, Calendar, Phone, MapPin, UserSquare2, Syringe, Activity, X, Eye, Pencil, Trash2 } from 'lucide-react'
+import { deleteExamination, deletePatient } from '@/lib/actions/data'
 
 export default function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -29,6 +30,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter()
   const [deletingPatient, setDeletingPatient] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingExamId, setDeletingExamId] = useState<string | null>(null)
+  const [confirmDeleteExam, setConfirmDeleteExam] = useState<any | null>(null)
 
   useEffect(() => {
     async function fetchPatientData() {
@@ -85,8 +88,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const handleDeletePatient = async () => {
     setDeletingPatient(true)
     try {
-      const { error } = await supabase.from('patients').delete().eq('id', id)
-      if (error) throw error
+      const result = await deletePatient(id)
+      if (!result.success) throw new Error(result.error)
       router.push('/patients')
       router.refresh()
     } catch (error: any) {
@@ -94,6 +97,21 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     } finally {
       setDeletingPatient(false)
       setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleDeleteExam = async (exam: any) => {
+    setDeletingExamId(exam.id)
+    try {
+      const result = await deleteExamination(exam.id)
+      if (!result.success) throw new Error(result.error)
+      setExaminations(prev => prev.filter(e => e.id !== exam.id))
+      setConfirmDeleteExam(null)
+      if (selectedExam?.id === exam.id) setSelectedExam(null)
+    } catch (error: any) {
+      alert(`Gagal menghapus pemeriksaan: ${error.message}`)
+    } finally {
+      setDeletingExamId(null)
     }
   }
 
@@ -203,6 +221,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       case 'Ibu_Hamil':
         const bumil = Array.isArray(exam.examination_bumil_details) ? exam.examination_bumil_details[0] : exam.examination_bumil_details
         const usiaKandunganSaatPemeriksaan = hitungUsiaKehamilan(bumil?.hpht, exam.tanggal_pemeriksaan);
+        const bulanKandungan = usiaKandunganSaatPemeriksaan ? Math.floor(usiaKandunganSaatPemeriksaan.minggu / 4) : null
+        const sisaMingguKandungan = usiaKandunganSaatPemeriksaan ? usiaKandunganSaatPemeriksaan.minggu % 4 : null
         return (
           <div className="space-y-4">
             {bumil?.hpht && (
@@ -214,7 +234,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 {usiaKandunganSaatPemeriksaan && (
                   <div className="bg-pink-100/50 px-3 py-1.5 rounded-lg border border-pink-100 text-right">
                     <p className="text-[10px] font-bold text-pink-600 uppercase tracking-wide">Usia Kandungan Saat Diperiksa</p>
-                    <p className="text-sm font-bold text-pink-900">{usiaKandunganSaatPemeriksaan.minggu} Minggu {usiaKandunganSaatPemeriksaan.hari} Hari</p>
+                    <p className="text-sm font-bold text-pink-900">
+                      {bulanKandungan} Bulan {sisaMingguKandungan} Minggu
+                    </p>
+                    <p className="text-[10px] text-pink-400">({usiaKandunganSaatPemeriksaan.minggu} minggu {usiaKandunganSaatPemeriksaan.hari} hari)</p>
                   </div>
                 )}
               </div>
@@ -229,26 +252,38 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               <div>
                 <p className="text-xs font-semibold text-slate-500 mb-2">Imunisasi TT</p>
                 <div className="space-y-2">
-                  {bumil.imunisasi_tt1 && (
-                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <p className="text-sm text-slate-800 font-medium">✓ TT1 ({formatDate(bumil.tanggal_tt1 || exam.tanggal_pemeriksaan)})</p>
-                      {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt1 || exam.tanggal_pemeriksaan) && (
-                        <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
-                          Usia {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt1 || exam.tanggal_pemeriksaan)?.minggu} mgg
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {bumil.imunisasi_tt2 && (
-                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <p className="text-sm text-slate-800 font-medium">✓ TT2 ({formatDate(bumil.tanggal_tt2 || exam.tanggal_pemeriksaan)})</p>
-                      {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt2 || exam.tanggal_pemeriksaan) && (
-                        <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
-                          Usia {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt2 || exam.tanggal_pemeriksaan)?.minggu} mgg
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {bumil.imunisasi_tt1 && (() => {
+                    const tgl = bumil.tanggal_tt1 || exam.tanggal_pemeriksaan
+                    const u = hitungUsiaKehamilan(bumil.hpht, tgl)
+                    const bl = u ? Math.floor(u.minggu / 4) : null
+                    const sm = u ? u.minggu % 4 : null
+                    return (
+                      <div className="flex justify-between items-center bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                        <p className="text-sm text-slate-800 font-medium">✓ TT1 ({formatDate(tgl)})</p>
+                        {u && (
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                            Usia kandungan: {bl} bln {sm} mgg
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  {bumil.imunisasi_tt2 && (() => {
+                    const tgl = bumil.tanggal_tt2 || exam.tanggal_pemeriksaan
+                    const u = hitungUsiaKehamilan(bumil.hpht, tgl)
+                    const bl = u ? Math.floor(u.minggu / 4) : null
+                    const sm = u ? u.minggu % 4 : null
+                    return (
+                      <div className="flex justify-between items-center bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                        <p className="text-sm text-slate-800 font-medium">✓ TT2 ({formatDate(tgl)})</p>
+                        {u && (
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                            Usia kandungan: {bl} bln {sm} mgg
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )}
@@ -543,7 +578,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                           <TableHead className="font-semibold text-slate-700">Kategori</TableHead>
                           <TableHead className="font-semibold text-slate-700">Hasil / Tindakan</TableHead>
                           <TableHead className="font-semibold text-slate-700">Petugas</TableHead>
-                          <TableHead className="w-[80px] text-center font-semibold text-slate-700">Aksi</TableHead>
+                          <TableHead className="w-[110px] text-center font-semibold text-slate-700">Aksi</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -566,15 +601,27 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                               {exam.profiles?.nama}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => setSelectedExam(exam)} 
-                                className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full flex items-center justify-center"
-                                title="Lihat Detail"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => setSelectedExam(exam)} 
+                                  className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full flex items-center justify-center"
+                                  title="Lihat Detail"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setConfirmDeleteExam(exam)}
+                                  disabled={deletingExamId === exam.id}
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full flex items-center justify-center"
+                                  title="Hapus Pemeriksaan"
+                                >
+                                  {deletingExamId === exam.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                           )
@@ -660,13 +707,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                               {ttDetails.imunisasi_tt1 && (() => {
                                 const tglTT1 = ttDetails.tanggal_tt1 || exam.tanggal_pemeriksaan;
                                 const usiaTT1 = hitungUsiaKehamilan(ttDetails.hpht, tglTT1);
+                                const bl1 = usiaTT1 ? Math.floor(usiaTT1.minggu / 4) : null
+                                const sm1 = usiaTT1 ? usiaTT1.minggu % 4 : null
                                 return (
                                 <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden">
                                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold z-10">✓</div>
                                   <div className="z-10">
                                     <p className="text-sm font-bold text-slate-800">Imunisasi TT1</p>
                                     <p className="text-xs text-slate-500">Diberikan: {formatDate(tglTT1)}</p>
-                                    {usiaTT1 && <p className="text-xs font-semibold text-pink-600 mt-0.5">Usia Kandungan: {usiaTT1.minggu} minggu</p>}
+                                    {usiaTT1 && <p className="text-xs font-semibold text-pink-600 mt-0.5">Usia Kandungan: {bl1} bulan {sm1} minggu ({usiaTT1.minggu} mgg)</p>}
                                   </div>
                                 </div>
                                 );
@@ -674,13 +723,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                               {ttDetails.imunisasi_tt2 && (() => {
                                 const tglTT2 = ttDetails.tanggal_tt2 || exam.tanggal_pemeriksaan;
                                 const usiaTT2 = hitungUsiaKehamilan(ttDetails.hpht, tglTT2);
+                                const bl2 = usiaTT2 ? Math.floor(usiaTT2.minggu / 4) : null
+                                const sm2 = usiaTT2 ? usiaTT2.minggu % 4 : null
                                 return (
                                 <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm relative overflow-hidden">
                                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold z-10">✓</div>
                                   <div className="z-10">
                                     <p className="text-sm font-bold text-slate-800">Imunisasi TT2</p>
                                     <p className="text-xs text-slate-500">Diberikan: {formatDate(tglTT2)}</p>
-                                    {usiaTT2 && <p className="text-xs font-semibold text-pink-600 mt-0.5">Usia Kandungan: {usiaTT2.minggu} minggu</p>}
+                                    {usiaTT2 && <p className="text-xs font-semibold text-pink-600 mt-0.5">Usia Kandungan: {bl2} bulan {sm2} minggu ({usiaTT2.minggu} mgg)</p>}
                                   </div>
                                 </div>
                                 );
@@ -791,6 +842,36 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               <Button variant="danger" onClick={handleDeletePatient} disabled={deletingPatient}>
                 {deletingPatient ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                 Ya, Hapus Pasien
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Pemeriksaan */}
+      {confirmDeleteExam && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Hapus Pemeriksaan?</h3>
+                  <p className="text-sm text-slate-500">Tindakan ini tidak dapat dibatalkan</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-700 bg-red-50 border border-red-100 rounded-lg p-3">
+                Hapus data pemeriksaan <strong>{confirmDeleteExam.jenis_pemeriksaan?.replace('_', ' ')}</strong> tanggal <strong>{formatDate(confirmDeleteExam.tanggal_pemeriksaan)}</strong>?
+                <br /><span className="text-xs text-red-500 mt-1 block">Seluruh detail dan catatan pemeriksaan ini akan dihapus permanen.</span>
+              </p>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmDeleteExam(null)} disabled={!!deletingExamId}>Batal</Button>
+              <Button variant="danger" onClick={() => handleDeleteExam(confirmDeleteExam)} disabled={!!deletingExamId}>
+                {deletingExamId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Ya, Hapus Pemeriksaan
               </Button>
             </div>
           </div>

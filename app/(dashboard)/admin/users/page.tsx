@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { registerUser, deleteUser, updateUser } from '@/lib/actions/auth'
+import { registerUser, deleteUser, updateUser, listUsers } from '@/lib/actions/auth'
 import { useAuth } from '@/hooks/use-auth'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
@@ -32,13 +32,12 @@ export default function UsersPage() {
     if (!isAdmin) return
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setUsers(data || [])
+      const result = await listUsers()
+      if (result.success) {
+        setUsers(result.data)
+      } else {
+        console.error('Error fetching users:', result.error)
+      }
     } catch (error) {
       console.error('Error fetching users:', error)
     } finally {
@@ -101,7 +100,7 @@ export default function UsersPage() {
   const startEdit = (u: any) => {
     setEditingId(u.id)
     setFormData({
-      email: '', // Email not easily available in profiles
+      email: u.email || '',
       password: '',
       nama: u.nama,
       role: u.role,
@@ -171,6 +170,20 @@ export default function UsersPage() {
                 />
               </div>
             )}
+            {editingId && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Email Login</label>
+                <Input 
+                  id="input-email-petugas-edit"
+                  type="email"
+                  disabled
+                  value={formData.email}
+                  className="bg-slate-50 text-slate-400 cursor-not-allowed"
+                  title="Email tidak dapat diubah melalui form ini"
+                />
+                <p className="text-[11px] text-slate-400">Email tidak dapat diubah dari halaman ini.</p>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">{editingId ? 'Kata Sandi Baru (Kosongkan jika tetap)' : 'Kata Sandi'}</label>
               <Input 
@@ -229,6 +242,7 @@ export default function UsersPage() {
             <TableHeader className="bg-slate-50/50">
               <TableRow>
                 <TableHead className="py-4">Nama Petugas</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Peran</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Terdaftar</TableHead>
@@ -239,6 +253,9 @@ export default function UsersPage() {
               {users.map((u) => (
                 <TableRow key={u.id} className="hover:bg-slate-50 transition-colors">
                   <TableCell className="font-bold text-slate-900 py-4">{u.nama}</TableCell>
+                  <TableCell className="text-sm text-slate-500">
+                    {u.email || <span className="text-slate-300 italic text-xs">—</span>}
+                  </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
                       ${u.role === 'admin' ? 'bg-emerald-100 text-emerald-700' : 'bg-teal-100 text-teal-700'}`}>
@@ -279,7 +296,7 @@ export default function UsersPage() {
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-10 text-slate-400">
                     Belum ada petugas yang terdaftar.
                   </TableCell>
                 </TableRow>

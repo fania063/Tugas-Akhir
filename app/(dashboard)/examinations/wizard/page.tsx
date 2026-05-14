@@ -72,9 +72,32 @@ function WizardContent() {
     loadPatients()
   }, [supabase])
 
+  // Helper: hitung usia dalam tahun
+  const getAgeYears = (tanggalLahir: string) => {
+    const today = new Date()
+    const birth = new Date(tanggalLahir)
+    let age = today.getFullYear() - birth.getFullYear()
+    const m = today.getMonth() - birth.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+    return age
+  }
+
   // Lists
-  const ibuList = patients.filter(p => p.jenis_kelamin === 'P')
-  const balitaList = patients.filter(p => !selectedIbuId || p.id_ibu === selectedIbuId)
+  // Ibu: perempuan, usia > 12 dan < 60 tahun
+  const ibuList = patients.filter(p => {
+    if (p.jenis_kelamin !== 'P') return false
+    if (!p.tanggal_lahir) return false
+    const age = getAgeYears(p.tanggal_lahir)
+    return age > 12 && age < 60
+  })
+  // Balita: usia < 5 tahun (L atau P), opsional filter by id_ibu jika dipilih
+  const balitaList = patients.filter(p => {
+    if (!p.tanggal_lahir) return false
+    const age = getAgeYears(p.tanggal_lahir)
+    if (age >= 5) return false
+    if (selectedIbuId) return p.id_ibu === selectedIbuId
+    return true
+  })
   
   // Selected Objects
   const selectedIbuObj = patients.find(p => p.id === selectedIbuId)
