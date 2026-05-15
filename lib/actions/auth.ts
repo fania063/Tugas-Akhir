@@ -9,6 +9,34 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/** Ambil semua user beserta email dari auth.users, digabung dengan data profiles */
+export async function listUsers() {
+  try {
+    // 1. Ambil semua user dari auth (termasuk email)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    if (authError) throw authError
+
+    // 2. Ambil semua profiles
+    const { data: profiles, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (profileError) throw profileError
+
+    // 3. Gabungkan: map email dari auth ke profiles
+    const emailMap = new Map(authData.users.map(u => [u.id, u.email ?? '']))
+    const merged = (profiles || []).map(p => ({
+      ...p,
+      email: emailMap.get(p.id) ?? '',
+    }))
+
+    return { success: true, data: merged }
+  } catch (error: any) {
+    console.error('Error listing users:', error)
+    return { success: false, error: error.message, data: [] }
+  }
+}
+
 export async function registerUser(formData: {
   email: string
   password?: string

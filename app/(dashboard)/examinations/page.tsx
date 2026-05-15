@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Loader2, Trash2, Eye, Pencil } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { deleteExamination } from '@/lib/actions/data'
 
 export default function ExaminationsPage() {
   const [examinations, setExaminations] = useState<any[]>([])
@@ -46,8 +47,8 @@ export default function ExaminationsPage() {
   const handleDelete = async (exam: any) => {
     setDeletingId(exam.id)
     try {
-      const { error } = await supabase.from('examinations').delete().eq('id', exam.id)
-      if (error) throw error
+      const result = await deleteExamination(exam.id)
+      if (!result.success) throw new Error(result.error)
       setExaminations(prev => prev.filter(e => e.id !== exam.id))
       setConfirmDelete(null)
     } catch (error: any) {
