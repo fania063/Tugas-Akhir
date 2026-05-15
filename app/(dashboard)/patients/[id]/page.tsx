@@ -225,33 +225,58 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-sm font-medium text-rose-600 bg-rose-50 p-2 rounded-md">{bumil.tanda_bahaya}</p>
               </div>
             )}
-            {(bumil?.imunisasi_tt1 || bumil?.imunisasi_tt2) && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 mb-2">Imunisasi TT</p>
-                <div className="space-y-2">
-                  {bumil.imunisasi_tt1 && (
-                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <p className="text-sm text-slate-800 font-medium">✓ TT1 ({formatDate(bumil.tanggal_tt1 || exam.tanggal_pemeriksaan)})</p>
-                      {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt1 || exam.tanggal_pemeriksaan) && (
-                        <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
-                          Usia {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt1 || exam.tanggal_pemeriksaan)?.minggu} mgg
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {bumil.imunisasi_tt2 && (
-                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <p className="text-sm text-slate-800 font-medium">✓ TT2 ({formatDate(bumil.tanggal_tt2 || exam.tanggal_pemeriksaan)})</p>
-                      {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt2 || exam.tanggal_pemeriksaan) && (
-                        <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
-                          Usia {hitungUsiaKehamilan(bumil.hpht, bumil.tanggal_tt2 || exam.tanggal_pemeriksaan)?.minggu} mgg
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+           {(bumil?.imunisasi_tt1 || bumil?.imunisasi_tt2) && (
+  <div>
+    <p className="text-xs font-semibold text-slate-500 mb-2">Imunisasi TT</p>
+    <div className="space-y-2">
+
+      {bumil.imunisasi_tt1 && bumil.tanggal_tt1 && (
+        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+          <p className="text-sm text-slate-800 font-medium">
+            ✓ TT1 ({formatDate(bumil.tanggal_tt1)})
+          </p>
+
+          {hitungUsiaKehamilan(
+            bumil.hpht,
+            bumil.tanggal_tt1
+          ) && (
+            <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
+              Usia {
+                hitungUsiaKehamilan(
+                  bumil.hpht,
+                  bumil.tanggal_tt1
+                )?.minggu
+              } mgg
+            </span>
+          )}
+        </div>
+      )}
+
+      {bumil.imunisasi_tt2 && bumil.tanggal_tt2 && (
+        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+          <p className="text-sm text-slate-800 font-medium">
+            ✓ TT2 ({formatDate(bumil.tanggal_tt2)})
+          </p>
+
+          {hitungUsiaKehamilan(
+            bumil.hpht,
+            bumil.tanggal_tt2
+          ) && (
+            <span className="text-xs font-semibold text-pink-700 bg-pink-100 px-2 py-0.5 rounded-md">
+              Usia {
+                hitungUsiaKehamilan(
+                  bumil.hpht,
+                  bumil.tanggal_tt2
+                )?.minggu
+              } mgg
+            </span>
+          )}
+        </div>
+      )}
+
+    </div>
+  </div>
+)}
             
             {/* Medis Bumil */}
             {bumil?.riwayat_penyakit && (

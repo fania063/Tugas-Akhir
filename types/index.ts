@@ -157,7 +157,7 @@ export function cekNilaiNormal(
 ): NilaiStatus {
   if (nilai == null) return 'unknown'
   if (jenis === 'gula_darah' || jenis === 'kolesterol') {
-    return nilai < 180 ? 'normal' : 'abnormal'
+    return nilai <= 180 ? 'normal' : 'abnormal'
   }
   if (jenis === 'asam_urat') {
     return nilai >= 1 && nilai <= 6 ? 'normal' : 'abnormal'
